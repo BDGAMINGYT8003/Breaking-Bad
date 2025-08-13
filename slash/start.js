@@ -34,7 +34,8 @@ module.exports = {
         // Create a new user profile
         users[interaction.user.id] = {
             wallet: 500,
-            safehouse: 0,
+            treasury: 0,
+            treasuryCapacity: 5000,
             inventory: {
                 blueCrystals: 0,
                 purity: 0
@@ -47,7 +48,11 @@ module.exports = {
             },
             level: 1,
             empirePoints: 0,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            lastDaily: null,
+            dailyStreak: 0,
+            lastWeekly: null,
+            lastMonthly: null
         };
 
         // Save the updated user data
