@@ -29,7 +29,7 @@ module.exports = {
             const cooldownComponent = new ContainerBuilder()
                 .setAccentColor(0xFF0000)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('**Daily Reward Already Claimed**').setHeadingLevel(2),
+                new TextDisplayBuilder().setContent('**Daily Reward Already Claimed**'),
                     new TextDisplayBuilder().setContent(`You can claim your next daily reward <t:${timestamp}:R>.`)
                 );
 
@@ -57,8 +57,8 @@ module.exports = {
         }
 
         // --- Reward Calculation & DB Update ---
-        const baseReward = 1000;
-        const streakBonus = dailyStreak > 0 ? dailyStreak * 100 : 0;
+        const baseReward = 10000;
+        const streakBonus = dailyStreak > 0 ? dailyStreak * 250 : 0;
         const totalReward = baseReward + streakBonus;
 
         db.updateUser(userId, {
@@ -72,7 +72,7 @@ module.exports = {
         const rewardContainer = new ContainerBuilder()
             .setAccentColor(0x00FF00)
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('**Daily Reward Claimed!**').setHeadingLevel(1),
+                new TextDisplayBuilder().setContent('**Daily Reward Claimed!**'),
                 new TextDisplayBuilder().setContent(`**Base Reward:** ${baseReward.toLocaleString()} ₿`),
                 new TextDisplayBuilder().setContent(`**Streak Bonus:** ${streakBonus.toLocaleString()} ₿`),
                 new TextDisplayBuilder().setContent(`**Total Reward:** ${totalReward.toLocaleString()} ₿`),

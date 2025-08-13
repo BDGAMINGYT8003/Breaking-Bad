@@ -4,8 +4,7 @@
   "description": "A Breaking Bad-themed interactive economy bot.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "deploy": "node deploy-commands.js"
+    "start": "node index.js"
   },
   "keywords": [
     "discord",
@@ -16,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.13.0"
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.3.1"
   }
 }

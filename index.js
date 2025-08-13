@@ -1,8 +1,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, ActivityType, REST, Routes, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
-const { clientId, token } = require('./config.json');
+require('dotenv').config(); // Load .env file for local development
 const db = require('./db.js');
+
+// Retrieve token and client ID from environment variables
+const token = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
+
+if (!token || !clientId) {
+    console.error('[FATAL] DISCORD_TOKEN and CLIENT_ID must be provided in environment variables.');
+    process.exit(1);
+}
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -39,7 +48,7 @@ client.once(Events.ClientReady, async c => {
     setInterval(() => {
         const presence = presences[Math.floor(Math.random() * presences.length)];
         client.user.setActivity(presence.name, { type: presence.type });
-    }, 15000); // Rotates every 15 seconds
+    }, 15000);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -56,7 +65,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const unregisteredUserComponent = new ContainerBuilder()
             .setAccentColor(0xFF0000)
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('**Account Required**').setHeadingLevel(2),
+                new TextDisplayBuilder().setContent('**Account Required**'),
                 new TextDisplayBuilder().setContent('You need to create an account first! Use the `/start` command to begin your empire.')
             );
         return interaction.reply({
@@ -87,7 +96,6 @@ client.on(Events.InteractionCreate, async interaction => {
 // --- Main Execution ---
 (async () => {
     try {
-        // Auto-register commands on startup
         console.log(`[DEPLOY] Started refreshing ${client.commands.size} application (/) commands.`);
         const rest = new REST({ version: '10' }).setToken(token);
         const commandData = client.commands.map(cmd => cmd.data.toJSON());
@@ -98,7 +106,6 @@ client.on(Events.InteractionCreate, async interaction => {
 		);
         console.log(`[DEPLOY] Successfully reloaded ${data.length} application (/) commands.`);
 
-        // Login to Discord
         await client.login(token);
     } catch (error) {
         console.error('[FATAL] An error occurred during startup:', error);

@@ -31,14 +31,14 @@ module.exports = {
             const cooldownComponent = new ContainerBuilder()
                 .setAccentColor(0xFF0000)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('**Monthly Reward Already Claimed**').setHeadingLevel(2),
+                    new TextDisplayBuilder().setContent('**Monthly Reward Already Claimed**'),
                     new TextDisplayBuilder().setContent(`You can claim your next monthly reward <t:${timestamp}:R>.`)
                 );
             return interaction.reply({ components: [cooldownComponent], flags: MessageFlags.IsComponentsV2, ephemeral: true });
         }
 
         // --- Reward and Update ---
-        const reward = 50000;
+        const reward = 125000;
         db.updateUser(userId, {
             wallet: userData.wallet + reward,
             lastMonthly: now.toISOString()
@@ -48,7 +48,7 @@ module.exports = {
         const rewardComponent = new ContainerBuilder()
             .setAccentColor(0x00FF00)
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('**Monthly Reward Claimed!**').setHeadingLevel(1),
+                new TextDisplayBuilder().setContent('**Monthly Reward Claimed!**'),
                 new TextDisplayBuilder().setContent(`You have successfully claimed your monthly reward of **${reward.toLocaleString()} ₿**!`)
             );
 

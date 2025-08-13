@@ -9,7 +9,7 @@ function createBalanceComponent(user, userData) {
     return new ContainerBuilder()
         .setAccentColor(0x0099FF)
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`**${user.username}'s Balance**`).setHeadingLevel(1),
+            new TextDisplayBuilder().setContent(`**${user.username}'s Balance**`),
             new TextDisplayBuilder().setContent(`**Wallet:** ${wallet.toLocaleString()} ₿`),
             new TextDisplayBuilder().setContent(`**Inventory:** ${inventory.blueCrystals.toLocaleString()} ⌬`),
             new TextDisplayBuilder().setContent(`**🏦 Treasury:** ${treasury.toLocaleString()} / ${treasuryCapacity.toLocaleString()} ₿`),
