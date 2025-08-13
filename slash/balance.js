@@ -1,26 +1,23 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 const db = require('../db.js');
 
-// Helper function to create the balance embed, can be reused
-function createBalanceEmbed(user, userData) {
+// Helper function to create the balance component
+function createBalanceComponent(user, userData) {
     const { wallet, treasury, treasuryCapacity, inventory } = userData;
     const remainingSpace = treasuryCapacity - treasury;
 
-    return new EmbedBuilder()
-        .setColor(0x0099FF)
-        .setTitle(`${user.username}'s Balance`)
-        .setThumbnail(user.displayAvatarURL())
-        .addFields(
-            { name: 'Heisenberg Bucks (₿)', value: `**Wallet:** ${wallet.toLocaleString()} ₿`, inline: true },
-            { name: 'Blue Crystals (⌬)', value: `**Inventory:** ${inventory.blueCrystals.toLocaleString()} ⌬`, inline: true },
-            { name: '🏦 Treasury', value: `**Stored:** ${treasury.toLocaleString()} / ${treasuryCapacity.toLocaleString()} ₿` },
-            { name: 'Remaining Space', value: `${remainingSpace.toLocaleString()} ₿`, inline: false }
-        )
-        .setTimestamp()
-        .setFooter({ text: 'Heisenberg Bot' });
+    return new ContainerBuilder()
+        .setAccentColor(0x0099FF)
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`**${user.username}'s Balance**`).setHeadingLevel(1),
+            new TextDisplayBuilder().setContent(`**Wallet:** ${wallet.toLocaleString()} ₿`),
+            new TextDisplayBuilder().setContent(`**Inventory:** ${inventory.blueCrystals.toLocaleString()} ⌬`),
+            new TextDisplayBuilder().setContent(`**🏦 Treasury:** ${treasury.toLocaleString()} / ${treasuryCapacity.toLocaleString()} ₿`),
+            new TextDisplayBuilder().setContent(`*Remaining Space: ${remainingSpace.toLocaleString()} ₿*`)
+        );
 }
 
-// Helper function to parse amounts like "10k", "1.5m", "all"
+// Helper function to parse amounts
 function parseAmount(amountStr, wallet, treasury, context) {
     const cleanedStr = amountStr.toLowerCase().trim();
     if (cleanedStr === 'all' || cleanedStr === 'max') {
@@ -44,7 +41,7 @@ module.exports = {
 
     async execute(interaction) {
         const userData = db.getUser(interaction.user.id);
-        const balanceEmbed = createBalanceEmbed(interaction.user, userData);
+        const balanceComponent = createBalanceComponent(interaction.user, userData);
 
         const row = new ActionRowBuilder()
             .addComponents(
@@ -54,8 +51,8 @@ module.exports = {
             );
 
         await interaction.reply({
-            embeds: [balanceEmbed],
-            components: [row],
+            components: [balanceComponent, row],
+            flags: MessageFlags.IsComponentsV2,
         });
     },
 
@@ -64,8 +61,9 @@ module.exports = {
 
         if (action === 'refresh') {
             const userData = db.getUser(interaction.user.id);
-            const newEmbed = createBalanceEmbed(interaction.user, userData);
-            await interaction.update({ embeds: [newEmbed] });
+            const newComponent = createBalanceComponent(interaction.user, userData);
+            const row = interaction.message.components[1]; // Get the existing button row
+            await interaction.update({ components: [newComponent, row], flags: MessageFlags.IsComponentsV2 });
         } else if (action === 'stash' || action === 'haul') {
             const modal = new ModalBuilder()
                 .setCustomId(`balance_${action}_modal`)
@@ -84,38 +82,37 @@ module.exports = {
     },
 
     async handleModal(interaction) {
-        const action = interaction.customId.split('_')[1]; // 'stash' or 'haul'
+        const action = interaction.customId.split('_')[1];
         const amountStr = interaction.fields.getTextInputValue(`${action}_amount_input`);
         const userData = db.getUser(interaction.user.id);
 
         const amount = parseAmount(amountStr, userData.wallet, userData.treasury, action);
 
+        let replyComponent;
+
         if (amount === null || !Number.isInteger(amount) || amount <= 0) {
-            return interaction.reply({ content: "That's not a valid amount.", ephemeral: true });
+            replyComponent = new ContainerBuilder().setAccentColor(0xFF0000).addTextDisplayComponents(new TextDisplayBuilder().setContent("That's not a valid amount."));
+            return interaction.reply({ components: [replyComponent], flags: MessageFlags.IsComponentsV2, ephemeral: true });
         }
 
         if (action === 'stash') {
             if (amount > userData.wallet) {
-                return interaction.reply({ content: "You don't have that much in your wallet.", ephemeral: true });
+                replyComponent = new ContainerBuilder().setAccentColor(0xFF0000).addTextDisplayComponents(new TextDisplayBuilder().setContent("You don't have that much in your wallet."));
+            } else if (amount > (userData.treasuryCapacity - userData.treasury)) {
+                replyComponent = new ContainerBuilder().setAccentColor(0xFF0000).addTextDisplayComponents(new TextDisplayBuilder().setContent("You don't have enough space in your treasury."));
+            } else {
+                db.updateUser(interaction.user.id, { wallet: userData.wallet - amount, treasury: userData.treasury + amount });
+                replyComponent = new ContainerBuilder().setAccentColor(0x00FF00).addTextDisplayComponents(new TextDisplayBuilder().setContent(`You successfully stashed **${amount.toLocaleString()} ₿**.`));
             }
-            const space = userData.treasuryCapacity - userData.treasury;
-            if (amount > space) {
-                return interaction.reply({ content: "You don't have enough space in your treasury.", ephemeral: true });
-            }
-            db.updateUser(interaction.user.id, {
-                wallet: userData.wallet - amount,
-                treasury: userData.treasury + amount
-            });
-            await interaction.reply({ content: `You successfully stashed **${amount.toLocaleString()} ₿**.`, ephemeral: true });
         } else if (action === 'haul') {
             if (amount > userData.treasury) {
-                return interaction.reply({ content: "You don't have that much in your treasury.", ephemeral: true });
+                replyComponent = new ContainerBuilder().setAccentColor(0xFF0000).addTextDisplayComponents(new TextDisplayBuilder().setContent("You don't have that much in your treasury."));
+            } else {
+                db.updateUser(interaction.user.id, { treasury: userData.treasury - amount, wallet: userData.wallet + amount });
+                replyComponent = new ContainerBuilder().setAccentColor(0x00FF00).addTextDisplayComponents(new TextDisplayBuilder().setContent(`You successfully hauled **${amount.toLocaleString()} ₿**.`));
             }
-            db.updateUser(interaction.user.id, {
-                treasury: userData.treasury - amount,
-                wallet: userData.wallet + amount
-            });
-            await interaction.reply({ content: `You successfully hauled **${amount.toLocaleString()} ₿**.`, ephemeral: true });
         }
+
+        await interaction.reply({ components: [replyComponent], flags: MessageFlags.IsComponentsV2, ephemeral: true });
     }
 };

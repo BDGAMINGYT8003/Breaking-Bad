@@ -1,13 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 const db = require('../db.js');
-
-// Helper function to format time remaining
-function formatTime(ms) {
-    const hours = Math.floor(ms / 3600000);
-    const minutes = Math.floor((ms % 3600000) / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${hours}h ${minutes}m ${seconds}s`;
-}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -32,12 +24,16 @@ module.exports = {
         if (lastDaily && lastDaily > lastReset) {
             const nextReset = new Date(lastReset);
             nextReset.setUTCDate(nextReset.getUTCDate() + 1);
-            const timeRemaining = nextReset - now;
-            const cooldownEmbed = new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setTitle('Daily Reward Already Claimed')
-                .setDescription(`You've already claimed your daily reward. Please wait.\n\n**Next claim in:** ${formatTime(timeRemaining)}`);
-            return interaction.reply({ embeds: [cooldownEmbed], ephemeral: true });
+            const timestamp = Math.floor(nextReset.getTime() / 1000);
+
+            const cooldownComponent = new ContainerBuilder()
+                .setAccentColor(0xFF0000)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('**Daily Reward Already Claimed**').setHeadingLevel(2),
+                    new TextDisplayBuilder().setContent(`You can claim your next daily reward <t:${timestamp}:R>.`)
+                );
+
+            return interaction.reply({ components: [cooldownComponent], flags: MessageFlags.IsComponentsV2, ephemeral: true });
         }
 
         // --- Streak Logic ---
@@ -72,22 +68,26 @@ module.exports = {
         });
 
         // --- Send Confirmation ---
-        const rewardEmbed = new EmbedBuilder()
-            .setColor(0x00FF00)
-            .setTitle('Daily Reward Claimed!')
-            .addFields(
-                { name: 'Base Reward', value: `${baseReward.toLocaleString()} ₿`, inline: true },
-                { name: 'Streak Bonus', value: `${streakBonus.toLocaleString()} ₿`, inline: true },
-                { name: 'Total Reward', value: `**${totalReward.toLocaleString()} ₿**`, inline: true },
-                { name: 'New Streak', value: `🔥 ${dailyStreak} day(s)` }
-            )
-            .setTimestamp();
+        const components = [];
+        const rewardContainer = new ContainerBuilder()
+            .setAccentColor(0x00FF00)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('**Daily Reward Claimed!**').setHeadingLevel(1),
+                new TextDisplayBuilder().setContent(`**Base Reward:** ${baseReward.toLocaleString()} ₿`),
+                new TextDisplayBuilder().setContent(`**Streak Bonus:** ${streakBonus.toLocaleString()} ₿`),
+                new TextDisplayBuilder().setContent(`**Total Reward:** ${totalReward.toLocaleString()} ₿`),
+                new TextDisplayBuilder().setContent(`**New Streak:** 🔥 ${dailyStreak} day(s)`)
+            );
 
         if (streakBroken) {
-            rewardEmbed.setColor(0xFFCC00)
-                .setDescription(`**Warning:** You skipped ${daysSkipped} day(s) and your previous streak has been broken!`);
+            rewardContainer.setAccentColor(0xFFCC00);
+            const warningText = new TextDisplayBuilder()
+                .setContent(`**Warning:** You skipped ${daysSkipped} day(s) and your previous streak has been broken!`);
+            // Insert warning at the beginning of the text components
+            rewardContainer.components.splice(1, 0, warningText);
         }
 
-        await interaction.reply({ embeds: [rewardEmbed] });
+        components.push(rewardContainer);
+        await interaction.reply({ components, flags: MessageFlags.IsComponentsV2 });
     },
 };

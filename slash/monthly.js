@@ -1,13 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 const db = require('../db.js');
-
-// Helper function to format time remaining
-function formatTime(ms) {
-    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    return `${days}d ${hours}h ${minutes}m`;
-}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -34,12 +26,15 @@ module.exports = {
         if (lastMonthly && lastMonthly > lastReset) {
             const nextReset = new Date(lastReset);
             nextReset.setUTCMonth(nextReset.getUTCMonth() + 1);
-            const timeRemaining = nextReset - now;
-            const cooldownEmbed = new EmbedBuilder()
-                .setColor(0xFF0000)
-                .setTitle('Monthly Reward Already Claimed')
-                .setDescription(`You've already claimed your monthly reward. Please wait.\n\n**Next claim in:** ${formatTime(timeRemaining)}`);
-            return interaction.reply({ embeds: [cooldownEmbed], ephemeral: true });
+            const timestamp = Math.floor(nextReset.getTime() / 1000);
+
+            const cooldownComponent = new ContainerBuilder()
+                .setAccentColor(0xFF0000)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('**Monthly Reward Already Claimed**').setHeadingLevel(2),
+                    new TextDisplayBuilder().setContent(`You can claim your next monthly reward <t:${timestamp}:R>.`)
+                );
+            return interaction.reply({ components: [cooldownComponent], flags: MessageFlags.IsComponentsV2, ephemeral: true });
         }
 
         // --- Reward and Update ---
@@ -50,12 +45,13 @@ module.exports = {
         });
 
         // --- Send Confirmation ---
-        const rewardEmbed = new EmbedBuilder()
-            .setColor(0x00FF00)
-            .setTitle('Monthly Reward Claimed!')
-            .setDescription(`You have successfully claimed your monthly reward of **${reward.toLocaleString()} ₿**!`)
-            .setTimestamp();
+        const rewardComponent = new ContainerBuilder()
+            .setAccentColor(0x00FF00)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('**Monthly Reward Claimed!**').setHeadingLevel(1),
+                new TextDisplayBuilder().setContent(`You have successfully claimed your monthly reward of **${reward.toLocaleString()} ₿**!`)
+            );
 
-        await interaction.reply({ embeds: [rewardEmbed] });
+        await interaction.reply({ components: [rewardComponent], flags: MessageFlags.IsComponentsV2 });
     },
 };
