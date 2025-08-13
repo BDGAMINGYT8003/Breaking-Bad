@@ -1,18 +1,16 @@
 const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ContainerBuilder, TextDisplayBuilder, SectionBuilder, MessageFlags } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
+const db = require('../db.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('start')
         .setDescription('Begin your empire in the world of Heisenberg.'),
     async execute(interaction) {
-        const usersFilePath = path.join(__dirname, '..', 'database/users.json');
-        const usersData = fs.readFileSync(usersFilePath, 'utf-8');
-        const users = JSON.parse(usersData);
+        const userId = interaction.user.id;
+        const user = db.getUser(userId);
 
         // Check if the user already has an account
-        if (users[interaction.user.id]) {
+        if (user) {
             const alreadyStartedEmbed = new ContainerBuilder()
                 .setAccentColor(0xFF0000) // Red for error/warning
                 .addTextDisplayComponents(
@@ -23,16 +21,15 @@ module.exports = {
                         .setContent("No turning back now. Use `/profile` to check your status or `/cook` to get to work.")
                 );
 
-            await interaction.reply({
+            return interaction.reply({
                 components: [alreadyStartedEmbed],
                 flags: MessageFlags.IsComponentsV2,
                 ephemeral: true
             });
-            return;
         }
 
-        // Create a new user profile
-        users[interaction.user.id] = {
+        // Create a new user profile object
+        const newUser = {
             wallet: 500,
             treasury: 0,
             treasuryCapacity: 5000,
@@ -41,7 +38,6 @@ module.exports = {
                 purity: 0
             },
             ingredients: {
-                // Starter ingredients for one batch
                 'Box Cutter': 2,
                 'Sulfuric Acid': 1,
                 'Methylamine': 1
@@ -55,10 +51,9 @@ module.exports = {
             lastMonthly: null
         };
 
-        // Save the updated user data
-        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 4));
+        // Save the new user using the db module
+        db.createUser(userId, newUser);
 
-        // Create the rich welcome message using Components V2
         const welcomeContainer = new ContainerBuilder()
             .setAccentColor(0x0099FF) // Heisenberg Blue
             .addSectionComponents(
@@ -75,13 +70,13 @@ module.exports = {
             );
 
         const tutorialButton = new ButtonBuilder()
-            .setCustomId('tutorial_button') // In a real scenario, you'd handle this interaction
+            .setCustomId('start_tutorial') // Following the new convention
             .setLabel('View Tutorial')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('📚');
 
         const shopButton = new ButtonBuilder()
-            .setCustomId('shop_button_starter') // This should likely trigger the /shop command or a specific modal
+            .setCustomId('start_shop') // Following the new convention
             .setLabel('Buy Starter Kit')
             .setStyle(ButtonStyle.Success)
             .setEmoji('🛒');

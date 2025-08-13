@@ -1,0 +1,21 @@
+{
+  "name": "heisenberg-bot",
+  "version": "1.0.0",
+  "description": "A Breaking Bad-themed interactive economy bot.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "economy",
+    "breaking-bad"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.13.0"
+  }
+}
